@@ -3,6 +3,30 @@
 #include <SPI.h>
 #include "MAX30105.h"
 #include "heartRate.h"
+// #include <TimerOne.h>
+#include "AS_LSM6DSOX.h"
+// #include "SAMDTimerInterrupt.h"
+
+
+
+// Timer definitions
+#define TIMER_INTERRUPT_DEBUG         0
+#define _TIMERINTERRUPT_LOGLEVEL_    0
+#define USING_TIMER_TC3         true
+
+// Rest of your existing definitions...
+#define SELECTED_TIMER      TIMER_TC3
+
+#include "SAMDTimerInterrupt.h"
+
+// Initialize SAMD Timer
+SAMDTimer ITimer(SELECTED_TIMER);
+
+// Make these variables volatile since they're modified in the interrupt
+
+// Timer interrupt handler
+
+
 
 // QT Py pins - minimal setup
 #define EPD_DC      A1    // Data/Command
@@ -20,24 +44,32 @@ Adafruit_UC8151D display(296, 128,    // Width, height
                         EPD_BUSY);    // Busy pin (not used)
 
 MAX30105 particleSensor;
+AS_LSM6DSOX sox;
+
+
+
 
 // Global variables for sensor readings
+const unsigned long timerPeriod = 10000; // 10,000 microseconds = 10 ms
 long start_time;
 long time_offset = 59505000;
 int currentScreen = 0;
 unsigned long lastSensorUpdate = 0;
 const unsigned long SENSOR_UPDATE_INTERVAL = 6000; // 6 seconds
-int currentHeartRate = 0;
-int currentSpO2 = 0;
-const byte RATE_SIZE = 4; // Increase this for more averaging
-byte rates[RATE_SIZE];
-byte rateSpot = 0;
-long lastBeat = 0;
-float beatsPerMinute;
-int beatAvg;
+volatile int currentHeartRate = 0;
+volatile int currentSpO2 = 0;
+const byte RATE_SIZE = 8; // Increase this for more averaging
+volatile byte rates[RATE_SIZE];
+volatile byte rateSpot = 0;
+volatile long lastBeat = 0;
+volatile float beatsPerMinute;
+volatile int beatAvg;
+const byte TIMER_CHANNEL = 0;
+volatile unsigned long lastCheck = 0;
 
 
 // Function prototypes
+bool checkForDoubleTap();
 void updateSensorReadings();
 void displayTime();
 void displayStepCount();
@@ -45,9 +77,18 @@ void displayHeartRate();
 void displayOximeter();
 void nextScreen();
 String millisecondsToTimeString(unsigned long millis);
+void TimerHandler(void)
+{
+  updateSensorReadings();
+  // Serial.println("intterupt!!!");
+}
+
+
+
 
 void setup() {
   Serial.begin(115200);
+  while (!Serial) delay(10);
   delay(1000);
   Serial.println("Flexible eInk Watch Interface");
   start_time = millis();
@@ -67,22 +108,74 @@ void setup() {
   particleSensor.setPulseAmplitudeRed(0x0A);
   particleSensor.setPulseAmplitudeGreen(0);
 
-  updateSensorReadings();
+    // Initialize the sensor
+  if (!sox.begin_I2C()) { // Initialize the gyro board
+    Serial.println("LSM6DSOX Not Found?");
+    while (1) {
+      delay(10);
+    }
+  }
+
+  Serial.println("LSM6DSOX Found");
+
+  // Reset and configure the sensor
+  sox.reset();
+  sox.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  sox.setAccelDataRate(LSM6DS_RATE_833_HZ);
+  sox.setGyroRange(LSM6DS_GYRO_RANGE_2000_DPS);
+  sox.setGyroDataRate(LSM6DS_RATE_1_66K_HZ);
+  sox.setupTaps(); // Set up tap detection
+
+  // Stabilize the sensor by capturing a few readings
+  sensors_event_t accel, gyro, temp;
+  delay(50);
+  for (int i = 0; i < 100; i++) {
+    sox.getEvent(&accel, &gyro, &temp);
+    delay(10);
+  }
+
+  Serial.println("Sensor initialized and ready for tap detection");
+  // TimerInterrupt.attachInterrupt(updateSensorReadings, TIMER_CHANNEL, 10000); // Interrupt every 1ms
+  // ITimer.attachInterruptInterval_MS(10, TimerHandler)
+
+    // Initialize timer interrupt
+  // if (ITimer.attachInterruptInterval_MS(100, TimerHandler))  // 10ms interval
+  if (false)
+  {
+    Serial.println("Starting ITimer OK");
+  }
+  else
+  {
+    Serial.println("Can't set ITimer correctly. Select another freq. or timer");
+  }
+
+
+  // updateSensorReadings();
 
   // Initial display
   displayTime(); // Start with time screen
 }
 
 void loop() {
-  updateSensorReadings();
 
+  
 
+  if (millis() - lastCheck >= 10) {
+    updateSensorReadings();
+    lastCheck = millis();
+  }
 
+  
+  
 
-  if (millis() - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL) {
+  // delay(6000);
+
+  
+  if (checkForDoubleTap()) {
+    Serial.println("tapped!");
+
     nextScreen();
-    lastSensorUpdate = millis();
-    switch (currentScreen) {
+        switch (currentScreen) {
     case 0:
       displayTime();
       break;
@@ -96,10 +189,48 @@ void loop() {
       displayOximeter();
       break;
   }
+  delay(1);
+
   }
+
+  // if (millis() - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL) {
+  //   nextScreen();
+  //   lastSensorUpdate = millis();
+  //   switch (currentScreen) {
+  //   case 0:
+  //     displayTime();
+  //     break;
+  //   case 1:
+  //     displayStepCount();
+  //     break;
+  //   case 2:
+  //     displayHeartRate();  // This will now show the updated BPM
+  //     break;
+  //   case 3:
+  //     displayOximeter();
+  //     break;
+  // }
+  // }
   
   
 }
+
+// Function to check for double tap
+bool checkForDoubleTap() {
+  static unsigned long tapWait = 0; // Decay value to prevent refiring immediately
+  uint8_t reg;
+
+  if (millis() > tapWait) {
+    reg = sox.getRegister(0x1C); // Read the status register for tap events
+    if (((reg & 0x40) == 0x40) && ((reg & 0x10) == 0x10)) { // Double tap condition
+      tapWait = millis() + 1500; // Prevent multiple detections for 1.5 seconds
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
 void displayTime() {
   display.clearBuffer();
@@ -287,7 +418,7 @@ void drawOxygenIcon(int x, int y) {
 void updateSensorReadings() {
   // Get IR and Red light values from the particle sensor
   long irValue = particleSensor.getIR();
-  long redValue = particleSensor.getRed();
+  // long redValue = particleSensor.getRed();
   
   // Update heart rate
   if (checkForBeat(irValue)) {
@@ -309,20 +440,23 @@ void updateSensorReadings() {
     }
   }
 
-  // Calculate SpO2
-  if (irValue > 50000) {  // Ensure there is enough signal
-    float ratio = (float)redValue / irValue;
-    float R = (ratio - 0.4) / 0.5;  // Calibration factor; adjust if needed
-    currentSpO2 = 110 - (25 * R);   // Estimate SpO2 based on ratio
+    if (irValue < 50000)
+    Serial.print(" No finger?");
 
-    if (currentSpO2 > 100) {
-      currentSpO2 = 100;  // SpO2 should max out at 100%
-    } else if (currentSpO2 < 0) {
-      currentSpO2 = 0;    // SpO2 should not be negative
-    }
-  } else {
-    currentSpO2 = 0; // No valid reading
-  }
+  // Calculate SpO2
+  // if (irValue > 50000) {  // Ensure there is enough signal
+  //   float ratio = (float)redValue / irValue;
+  //   float R = (ratio - 0.4) / 0.5;  // Calibration factor; adjust if needed
+  //   currentSpO2 = 110 - (25 * R);   // Estimate SpO2 based on ratio
+
+  //   if (currentSpO2 > 100) {
+  //     currentSpO2 = 100;  // SpO2 should max out at 100%
+  //   } else if (currentSpO2 < 0) {
+  //     currentSpO2 = 0;    // SpO2 should not be negative
+  //   }
+  // } else {
+  //   currentSpO2 = 0; // No valid reading
+  // }
 }
 
 

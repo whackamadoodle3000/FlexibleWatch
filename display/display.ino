@@ -13,7 +13,8 @@
 #define SRAM_CS     -1    
 
 // Initialize for 2.9" flexible display
-Adafruit_UC8151D display(296, 128, EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+Adafruit_UC8151D display(212, 104, EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
+// 296 x 128
 
 MAX30105 particleSensor;
 AS_LSM6DSOX sox;
@@ -105,25 +106,25 @@ void displayDigitalWatch() {
   display.clearBuffer();
   
   // Decorative border
-  display.drawRect(0, 0, 296, 128, EPD_BLACK);
-  display.drawRect(2, 2, 292, 124, EPD_BLACK);
+  display.drawRect(0, 0, 212, 104, EPD_BLACK);
+  display.drawRect(2, 2, 208, 100, EPD_BLACK);
   
   // Large time display with modern font-like styling
-  display.setTextSize(4);
+  display.setTextSize(2);
   display.setTextColor(EPD_BLACK);
-  display.setCursor(40, 40);
+  display.setCursor(20, 30);
   
   String timeStr = millisecondsToTimeString(millis() - start_time + time_offset);
   display.print(timeStr);
   
   // Subtle bottom text
   display.setTextSize(1);
-  display.setCursor(90, 110);
+  display.setCursor(40, 90);
   display.print("Double tap for stats");
   
   // Decorative dots or separators
-  for(int i = 0; i < 5; i++) {
-    display.fillCircle(140 + i*20, 75, 2, EPD_BLACK);
+  for(int i = 0; i < 4; i++) {
+    display.fillCircle(90 + i*20, 55, 2, EPD_BLACK);
   }
   
   display.display();
@@ -136,63 +137,153 @@ void displayStatsScreen() {
   display.clearBuffer();
   
   // Decorative border
-  display.drawRect(0, 0, 296, 128, EPD_BLACK);
-  display.drawRect(2, 2, 292, 124, EPD_BLACK);
+  display.drawRect(0, 0, 212, 104, EPD_BLACK);
+  display.drawRect(2, 2, 208, 100, EPD_BLACK);
   
-  // Header with larger, bolder text
-  display.setTextSize(3);
+  // Header with larger text
+  display.setTextSize(2);
   display.setTextColor(EPD_BLACK);
   display.setCursor(10, 5);
   display.print("Biometrics");
-  display.drawLine(10, 30, 250, 30, EPD_BLACK);
+  display.drawLine(10, 25, 200, 25, EPD_BLACK);
 
-  // Icons and stats with larger text
+  // Icons and stats
   // Heart Rate
-  drawHeartIcon(20, 50);
-  display.setTextSize(2);
-  display.setCursor(50, 45);
+  drawHeartIcon(5, 40);
+  display.setTextSize(1);
+  display.setCursor(30, 35);
   display.print("Heart Rate:");
-  display.setCursor(180, 45);
+  display.setCursor(140, 35);
   display.print(currentHeartRate > 0 ? String(currentHeartRate) + " BPM" : "--");
 
   // Steps
-  drawStepsIcon(20, 80);
-  display.setCursor(50, 75);
+  drawStepsIcon(5, 60);
+  display.setCursor(30, 55);
   display.print("Steps:");
-  display.setCursor(180, 75);
+  display.setCursor(140, 55);
   display.print(steps);
 
   // Oxygen
-  drawOxygenIcon(20, 110);
-  display.setCursor(50, 105);
+  drawOxygenIcon(5, 80);
+  display.setCursor(30, 75);
   display.print("Oxygen:");
-  display.setCursor(180, 105);
+  display.setCursor(140, 75);
   display.print(currentSpO2 > 0 ? String(currentSpO2) + "%" : "--");
   
   display.display();
 }
 
-// Improved icon drawing functions
 void drawHeartIcon(int x, int y) {
-  // More recognizable heart icon
-  display.fillCircle(x, y, 8, EPD_BLACK);
-  display.fillCircle(x + 12, y, 8, EPD_BLACK);
-  display.fillTriangle(x - 8, y, x + 20, y, x + 6, y + 15, EPD_BLACK);
+  display.fillCircle(x, y, 5, EPD_BLACK);
+  display.fillCircle(x + 8, y, 5, EPD_BLACK);
+  display.fillTriangle(x - 5, y, x + 13, y, x + 4, y + 10, EPD_BLACK);
 }
 
 void drawStepsIcon(int x, int y) {
-  // Foot-like steps icon
-  display.fillRect(x, y, 15, 8, EPD_BLACK);  // Base
-  display.fillRect(x + 5, y - 5, 10, 5, EPD_BLACK);  // Toe section
-  display.fillRect(x + 10, y - 10, 5, 5, EPD_BLACK);  // Toe tip
+  display.fillRect(x, y, 10, 5, EPD_BLACK);  // Base
+  display.fillRect(x + 3, y - 4, 7, 4, EPD_BLACK);  // Toe section
+  display.fillRect(x + 7, y - 8, 4, 4, EPD_BLACK);  // Toe tip
 }
 
 void drawOxygenIcon(int x, int y) {
-  // More detailed lung-like icon
-  display.fillRoundRect(x, y, 20, 10, 3, EPD_BLACK);  // Bronchi
-  display.fillCircle(x + 5, y + 15, 5, EPD_BLACK);    // Left lung
-  display.fillCircle(x + 15, y + 15, 5, EPD_BLACK);   // Right lung
+  display.fillRoundRect(x, y, 15, 8, 2, EPD_BLACK);  // Bronchi
+  display.fillCircle(x + 4, y + 10, 4, EPD_BLACK);   // Left lung
+  display.fillCircle(x + 11, y + 10, 4, EPD_BLACK);  // Right lung
 }
+
+
+// void displayDigitalWatch() {
+//   display.clearBuffer();
+  
+//   // Decorative border
+//   display.drawRect(0, 0, 296, 128, EPD_BLACK);
+//   display.drawRect(2, 2, 292, 124, EPD_BLACK);
+  
+//   // Large time display with modern font-like styling
+//   display.setTextSize(4);
+//   display.setTextColor(EPD_BLACK);
+//   display.setCursor(40, 40);
+  
+//   String timeStr = millisecondsToTimeString(millis() - start_time + time_offset);
+//   display.print(timeStr);
+  
+//   // Subtle bottom text
+//   display.setTextSize(1);
+//   display.setCursor(90, 110);
+//   display.print("Double tap for stats");
+  
+//   // Decorative dots or separators
+//   for(int i = 0; i < 5; i++) {
+//     display.fillCircle(140 + i*20, 75, 2, EPD_BLACK);
+//   }
+  
+//   display.display();
+// }
+
+// void displayStatsScreen() {
+//   int steps = 7500;
+//   int calories = 300;
+
+//   display.clearBuffer();
+  
+//   // Decorative border
+//   display.drawRect(0, 0, 296, 128, EPD_BLACK);
+//   display.drawRect(2, 2, 292, 124, EPD_BLACK);
+  
+//   // Header with larger, bolder text
+//   display.setTextSize(3);
+//   display.setTextColor(EPD_BLACK);
+//   display.setCursor(10, 5);
+//   display.print("Biometrics");
+//   display.drawLine(10, 30, 250, 30, EPD_BLACK);
+
+//   // Icons and stats with larger text
+//   // Heart Rate
+//   drawHeartIcon(20, 50);
+//   display.setTextSize(2);
+//   display.setCursor(50, 45);
+//   display.print("Heart Rate:");
+//   display.setCursor(180, 45);
+//   display.print(currentHeartRate > 0 ? String(currentHeartRate) + " BPM" : "--");
+
+//   // Steps
+//   drawStepsIcon(20, 80);
+//   display.setCursor(50, 75);
+//   display.print("Steps:");
+//   display.setCursor(180, 75);
+//   display.print(steps);
+
+//   // Oxygen
+//   drawOxygenIcon(20, 110);
+//   display.setCursor(50, 105);
+//   display.print("Oxygen:");
+//   display.setCursor(180, 105);
+//   display.print(currentSpO2 > 0 ? String(currentSpO2) + "%" : "--");
+  
+//   display.display();
+// }
+
+// // Improved icon drawing functions
+// void drawHeartIcon(int x, int y) {
+//   // More recognizable heart icon
+//   display.fillCircle(x, y, 8, EPD_BLACK);
+//   display.fillCircle(x + 12, y, 8, EPD_BLACK);
+//   display.fillTriangle(x - 8, y, x + 20, y, x + 6, y + 15, EPD_BLACK);
+// }
+
+// void drawStepsIcon(int x, int y) {
+//   // Foot-like steps icon
+//   display.fillRect(x, y, 15, 8, EPD_BLACK);  // Base
+//   display.fillRect(x + 5, y - 5, 10, 5, EPD_BLACK);  // Toe section
+//   display.fillRect(x + 10, y - 10, 5, 5, EPD_BLACK);  // Toe tip
+// }
+
+// void drawOxygenIcon(int x, int y) {
+//   // More detailed lung-like icon
+//   display.fillRoundRect(x, y, 20, 10, 3, EPD_BLACK);  // Bronchi
+//   display.fillCircle(x + 5, y + 15, 5, EPD_BLACK);    // Left lung
+//   display.fillCircle(x + 15, y + 15, 5, EPD_BLACK);   // Right lung
+// }
 
 
 void updateSensorReadings() {

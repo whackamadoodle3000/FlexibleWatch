@@ -22,7 +22,7 @@ AS_LSM6DSOX sox;
 
 // Global variables
 long start_time;
-long time_offset = 59505000;
+long time_offset = 57060000;
 int currentScreen = 0;
 
 // Improved heart rate and SpO2 variables
